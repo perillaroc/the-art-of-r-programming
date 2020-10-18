@@ -1,0 +1,903 @@
+---
+title: "R语言编程结构"
+output: 
+  html_notebook: 
+    theme: lumen
+---
+
+## 控制语句
+
+### 循环
+
+`for`，`while`，`repeat`
+
+```{r}
+x <- c(5, 12, 13)
+for (n in x) print(n)
+```
+
+```{r}
+i <- 1
+while (i <= 10) i <- i + 4
+i
+```
+
+```{r}
+i <- 1
+while (TRUE) {
+    i <- i + 4
+    if (i > 10) break
+}
+i
+```
+
+```{r}
+i <- 1
+while (TRUE) {
+    i <- i + 4
+    if (i > 10) break
+}
+i
+```
+
+`repeat` 相当于 `while(TRUE)`
+
+```{r}
+i <- 1
+repeat {
+    i <- i + 4
+    if (i > 10) break
+}
+i
+```
+
+`next` 类似 C++ 中的 `continue`
+
+### 对非向量集合的循环
+
+方法1：使用 `lapply()`，每次循环迭代之间相互独立。向量化方法可以加快执行速度
+
+方法2：使用 `get()` 函数，通过指定代表对象名字的字符串名称返回对象。将对象名称作为向量集合实现循环
+
+```{r}
+u <- matrix(
+    c(1, 2, 3, 1, 2, 4),
+    nrow=3
+)
+u
+```
+
+```{r}
+v <- matrix(
+    c(8, 12, 10, 15, 10, 2),
+    nrow=3
+)
+v
+```
+
+```{r}
+for (m in c("u", "v")) {
+    z <- get(m)
+    print(lm(z[,2] ~ z[,1]))
+}
+```
+
+### if-else结构
+
+if-else 语句会返回最后赋予的值
+
+```{r}
+x <- 2
+y <- if (x == 2) x else x + 1
+y
+```
+
+```{r}
+x <- 3
+y <- if(x == 2) x else x + 1
+y
+```
+
+处理向量时最好使用 `ifelse()` 函数
+
+
+## 算术和逻辑运算符及数值
+
+R 语言基本运算符
+
+- `x + y`
+- `x - y`
+- `x * y`
+- `x / y`
+- `x ^ y`
+- `x %% y`：模运算
+- `x %/% y`：整数除法
+- `x == y`
+- `x <= y`
+- `x >= y`
+- `x && y`：标量的逻辑“与”运算
+- `x || y`：标量的逻辑“或”运算
+- `x & y`：向量的逻辑“与”运算
+- `x | y`：向量的逻辑“或”运算
+- `!x`：逻辑非
+
+```{r}
+x <- c(TRUE, FALSE, TRUE)
+x
+```
+
+```{r}
+y <- c(TRUE, TRUE, FALSE)
+y
+```
+
+```{r}
+x & y
+```
+
+```{r}
+x[1] && y[1]
+```
+
+对向量使用 `&&`，仅查看向量中的第一个值
+
+```{r}
+x && y
+```
+
+```{r}
+if (x[1] && y[1]) print("both TRUE")
+```
+
+```{r}
+if (x & y) print("both TRUE")
+```
+
+`TRUE` 和 `FALSE` 可以简写为 `T` 和 `F`，在算术表达式中会被转换为 1 和 0
+
+```{r}
+1 < 2
+```
+
+```{r}
+(1 < 2) * (3 < 4)
+```
+
+```{r}
+(1 < 2) * (3 < 4) * (5 < 1)
+```
+
+```{r}
+(1 < 2) == TRUE
+```
+
+```{r}
+(1 < 2) == 1
+```
+
+## 参数的默认值
+
+具名实参，有默认值的参数，如果不使用默认值，函数调用时必须给出参数名
+
+```{r}
+scores <- read.csv(
+  "../data/student-mat.csv", 
+  header=TRUE
+)
+head(scores)
+```
+
+## 返回值
+
+返回值可以是任意 R 对象。通常为列表形式。
+
+不调用 `return()` 语句时，返回值是最后执行的语句的值。
+
+```{r}
+odd <- function(x) {
+    k <- 0
+    for (n in x) {
+        if (n %% 2 == 0) k <- k + 1
+    }
+    k
+}
+odd(1:10)
+```
+
+注意：如果省略最后一行的 `k`，则返回结果为 `for` 语句的值：`NULL`。
+
+### 决定是否显示调用 `return()`
+
+现在 R 语言普遍的习惯用法是避免显式调用 `return()`。
+原因之一是 `return()` 会延长执行时间。
+但简单函数的返回时间往往可以忽略不计。
+
+注：笔者强烈建议使用 `return()` 语句显式返回函数。优化往往不是最先考虑的问题。
+
+### 返回复杂对象
+
+```{r}
+g <- function() {
+    t <- function(x) {
+        return(x^2)
+    }
+    return(t)
+}
+g()
+```
+
+注：返回的函数包含函数的环境，实际上是一个闭包 (closure)
+
+## 函数都是对象
+
+R 函数是 first-class object，在绝大部分情况下可以作为对象使用。
+
+创建函数的语法：
+
+```{r}
+g <- function(x) {
+    return (x)
+}
+```
+
+`function()` 是一个内置的 R 函数，用于创建函数。
+右边是该函数的两个参数：
+
+- 形式参数列表：上例中只有一个参数
+- 函数体：expression 类，上例中是用大括号括起来的表达式
+
+`{` 也是一个函数，将多个语句组织成一个单元。
+
+两个参数可以通过 `formals()` 和 `body()` 函数获得。
+
+```{r}
+formals(g)
+```
+
+```{r}
+body(g)
+```
+
+`formals()` 和 `body()` 也可以当做替代函数 (replacement functions)。
+
+通过赋值修改函数体
+
+```{r}
+g <- function(h, a, b) h(a, b)
+formals(g) <- alist(x=)
+body(g) <- quote(2 * x + 3)
+g
+```
+
+`quota()` 生成 `call` 类，表示函数体。`2 *x + 3` 实际上是函数调用。
+
+```{r}
+g(3)
+```
+
+输入函数名称会显示整个函数
+
+```{r}
+g
+```
+
+R 中一些最基本的函数是用 C 语言写的，不能直接查看代码
+
+```{r}
+sum
+```
+
+可以给函数对象赋值
+
+```{r}
+f1 <- function(a, b) return (a + b)
+f2 <- function(a, b) return (a - b)
+f <- f1
+f(3, 2)
+```
+
+```{r}
+f <- f2
+f(3, 2)
+```
+
+```{r}
+g <- function(h, a, b) h(a, b)
+g(f1, 3, 2)
+```
+
+```{r}
+g(f2, 3, 2)
+```
+
+函数也可以组成向量
+
+```{r}
+g1 <- function(x) return(sin(x))
+g2 <- function(x) return(sqrt(x^2 + 1))
+g3 <- function(x) return(2 * x - 1)
+plot(c(0, 1), c(-1, 1.5))
+for (f in c(g1, g2, g3)) plot(f, 0, 1, add=T)
+```
+
+## 环境和变量作用域的问题
+
+R 语言中函数被正式地称为闭包 (closure)。
+函数不仅包含参数和函数体，也包括环境 (environment)。
+
+### 顶层环境
+
+```{r}
+w <- 12
+f <- function(y) {
+    d <- 8
+    h <- function() {
+        return (d * (w + y))
+    }
+    return(h())
+}
+environment(f)
+```
+
+`ls()` 列举环境中的所有对象
+
+```{r}
+ls()
+```
+
+`ls.str()` 查看更详细的信息
+
+```{r}
+ls.str()
+```
+
+### 变量作用域的层次
+
+```{r}
+f
+```
+
+```{r}
+f(12)
+```
+
+`h()` 是 `f()` 内部的局部对象，在顶层环境中不可见。
+
+下面的语句会报错
+
+```{r eval=FALSE}
+h
+```
+
+```
+Error: object 'h' not found
+```
+
+查看环境
+
+```{r}
+f <- function(y) {
+    d <- 8
+    h <- function() {
+        return (d * (w + y))
+    }
+    print(environment(h))
+    return(h())
+}
+f(2)
+```
+
+下面的代码会报错，`h()` 定义在顶层环境，无法使用定义在 `f()` 环境中的局部变量 `d`
+
+```{r eval=FALSE}
+f <- function(y) {
+    d <- 8
+    return(h())
+}
+
+h <- function() {
+    return (d * (w + y))
+}
+
+f(5)
+```
+
+```
+Error in h() : object 'd' not found
+```
+
+可以将 `d` 和 `y` 设置为参数
+
+
+```{r}
+f <- function(y) {
+    d <- 8
+    return(h(d, y))
+}
+
+h <- function(dee, yee) {
+    return (dee * (w + yee))
+}
+
+f(2)
+```
+
+`ftn` 与 `h` 环境一样
+
+```{r}
+f <- function(y, ftn) {
+    d <- 8
+    print(environment(ftn))
+    return(ftn(d, y))
+}
+
+h <- function(dee, yee) {
+    return (dee * (w + yee))
+}
+
+w <- 12
+f(3, h)
+```
+
+### 关于 `ls()` 的进一步讨论
+
+
+函数中调用 `ls()` 返回当前的局部变量。
+使用 `envir` 参数，返回指定框架 (frame) 中的局部变量。
+
+`parent.frame()` 沿函数调用链向上追溯框架
+
+```{r}
+f <- function(y) {
+    d <- 8
+    return (h(d, y))
+}
+
+h <- function(dee, yyy) {
+    print(ls())
+    print(ls(envir=parent.frame(n=1)))
+    return(dee * (w + yyy))
+}
+```
+
+```{r}
+f(2)
+```
+
+
+### 函数（几乎）没有副作用
+
+函数不会修改非局部变量。
+
+```{r}
+w <- 12
+
+f <- function(y) {
+    d <- 8
+    w <- w + 1
+    y <- y - 2
+    print(w)
+    h <- function() {
+        return (d * (w + y))
+    }
+    return(h())
+}
+
+t <- 4
+f(t)
+```
+
+顶层变量 `w` 没有被改变
+
+```{r}
+w
+```
+
+```{r}
+t
+```
+
+使用超赋值运算符 (superassignment operator) 可以修改全局变量。
+
+### 扩展案例：显示调用框的函数
+
+```{r}
+f <- function() {
+    a <- 1
+    return (g(a) + a)
+}
+
+g <- function() {
+    b <- 2
+    aab <- h(aa + b)
+    return (aab)
+}
+
+h <- function(aaa) {
+    c <- 3
+    return (aaa + c)
+}
+```
+
+`showframe()` 显示某调用框环境中的变量
+
+```{r}
+showframe <- function(upn) {
+    if (upn < 0) {
+        env <- .GlobalEnv
+    } else {
+        env <- parent.frame(n=upn+1)
+    }
+    
+    vars <- ls(envir=env)
+    
+    for (vr in vars) {
+        vrg <- get(vr, envir=env)
+        if (!is.function(vrg)) {
+            cat(vr, ":\n", sep="")
+            print(vrg)
+        }
+    }
+}
+```
+
+```{r}
+g <- function(aa) {
+    b <- 2
+    print("=====")
+    showframe(0)
+    print("=====")
+    showframe(1)
+    print("=====")
+    aab <- h(aa + b)
+    return (aab)
+}
+```
+
+```{r}
+f()
+```
+
+`get()` 函数根据变量名返回对象，支持 `envir` 参数
+
+注：字符串 => 对象
+
+```{r}
+m <- rbind(1:3, 20:22)
+m
+```
+
+```{r}
+get("m")
+```
+
+## R 语言中没有指针
+
+注：R 语言中有引用类
+
+```{r}
+x <- c(13, 5, 12)
+sort(x)
+```
+
+```{r}
+x <- sort(x)
+x
+```
+
+使用列表返回多个变量
+
+```{r}
+oddsevens <- function(v) {
+  odds <- which(v %% 2 == 1)
+  evens <- which(v %% 2 == 0)
+  list(o=odds, e=evens)
+}
+```
+
+## 向上层次进行写操作
+ 
+使用超赋值运算符 `<<-` 或函数 `assign()`
+
+### 利用超赋值运算符对非局部变量进行写操作
+
+```{r}
+two <- function(u) {
+  u <<- 2*u
+  z <- 2*z
+}
+
+x <- 1
+z <- 3
+two(x)
+```
+
+顶层环境的 `x` 和 `z` 保持不变
+
+```{r}
+x
+```
+
+```{r}
+z
+```
+
+已在顶层环境创建新的变量 `u`
+
+```{r}
+u
+```
+
+`<<-` 赋值运算符会逐级向上查找，直到顶层环境
+
+```{r}
+f <- function() {
+  inc <- function() {
+    x <<- x + 1
+  }
+  x <- 3
+  inc()
+  return (x)
+}
+```
+
+```{r}
+f()
+```
+
+`f()` 中的 `x` 在顶层环境中不存在。
+
+### 用 `assign()` 函数对非局部变量进行写操作
+
+`assign()` 函数可以直接指定变量的环境
+
+```{r}
+two <- function(u) {
+  assign("u", 2 * u, pos=.GlobalEnv)
+  z <- 2 * z
+}
+```
+
+执行前
+
+```{r}
+u
+```
+
+```{r}
+x
+```
+
+执行后
+
+```{r}
+two(x)
+```
+
+```{r}
+x
+```
+
+```{r}
+u
+```
+
+### 什么时候使用全局变量
+
+注：笔者认为还是要尽量避免使用全局变量，全局变量在本应该对外独立的函数内引入外部变量，不利于程序的模块化和组件化。
+作为 R 语言的初学者，笔者在后续学习过程中还需要进一步领会。
+
+### 闭包
+
+R 语言中的闭包包含函数的参数、函数体以及调用时的环境
+
+```{r}
+counter <- function() {
+  ctr <- 0
+  f <- function() {
+    ctr <<- ctr + 1
+    cat("this count currently has value", ctr, "\n")
+  }
+  return (f)
+}
+```
+
+执行函数
+
+```{r}
+c1 <- counter()
+c2 <- counter()
+```
+
+```{r}
+c1
+```
+
+```{r}
+c2
+```
+
+`c1` 和 `c2` 的环境不同，有各自独立的 `ctr` 变量
+
+```{r}
+c1()
+```
+
+```{r}
+c1()
+```
+
+```{r}
+c2()
+```
+
+```{r}
+c2()
+```
+
+```{r}
+c2()
+```
+
+```{r}
+c1()
+```
+
+## 递归
+
+递归是一种强大的编程工具。
+
+### Quicksort 的具体实现
+
+```{r}
+qs <- function(x) {
+  if (length(x) <= 1) return (x)
+  pivot <- x[1]
+  therest <- x[-1]
+  sv1 <- therest[therest < pivot]
+  sv2 <- therest[therest >= pivot]
+  sv1 <- qs(sv1)
+  sv2 <- qs(sv2)
+  return (c(sv1, pivot, sv2))
+}
+```
+
+```{r}
+qs(c(5, 4, 12, 13, 3, 8, 88))
+```
+
+### 拓展举例：二叉查找树
+
+R 语言中没有指针，可以使用数组保存二叉树，使用数组索引模拟指针。
+
+注：省略具体代码。作为初学者，笔者暂时不关心算法方面的代码。
+
+## 置换函数
+
+`names()` 函数是一个置换函数
+
+```{r}
+x <- c(1, 2, 4)
+names(x)
+```
+
+```{r}
+names(x) <- c("a", "b", "c")
+names(x)
+```
+
+```{r}
+x
+```
+
+### 什么是置换函数
+
+任何左边不是标识符的赋值语句都可以看做置换函数
+
+```
+g(u) <- u
+```
+
+R 语言会尝试执行
+
+```{r eval=FALSE}
+u <- "g<-"(u, value=v)
+```
+
+`"["()` 函数用于读向量元素，`"[<-"()` 函数用于写操作
+
+```{r}
+x <- c(8, 88, 5, 12, 13)
+x
+```
+
+```{r}
+x[3]
+```
+
+```{r}
+"["(x, 3)
+```
+
+```{r}
+x <- "[<-"(x, 2:3, value=99:100)
+x
+```
+
+### 扩展案例：可记录元素修改次数的向量类
+
+创建 `bookvec` 类的对象
+
+```{r}
+newbookvec <- function(x) {
+  tmp <- list()
+  tmp$vec <- x
+  tmp$wrts <- rep(0, length(x))
+  class(tmp) <- "bookvec"
+  return(tmp)
+}
+```
+
+读数据
+
+```{r}
+"[.bookvec" <- function(bv, subs) {
+  return (bv$vec[subs])
+}
+```
+
+写数据
+
+```{r}
+"[<-.bookvec" <- function(bv, subs, value) {
+  bv$wrts[subs] <- bv$wrts[subs] + 1
+  bv$vec[subs] <- value
+  return(bv)
+}
+```
+
+测试
+
+```{r}
+b <- newbookvec(c(3, 4, 5, 5, 12, 13))
+b
+```
+
+```{r}
+b[2]
+```
+
+```{r}
+b[2] <- 88
+b[2]
+```
+
+```{r}
+b$wrts
+```
+
+## 创建二元预算符
+
+以 `%` 开头和结束的函数
+
+```{r}
+"%a2b%" <- function(a, b) return (a + 2*b)
+3 %a2b% 5
+```
+
+## 匿名函数
+
+```{r}
+z <- matrix(1:6, nrow=3)
+z
+```
+
+```{r}
+y <- apply(
+  z,
+  1,
+  function(x) x/c(2, 8)
+)
+y
+```
+
