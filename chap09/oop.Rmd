@@ -1,0 +1,360 @@
+---
+title: "面向对象编程"
+output: html_notebook
+---
+
+R 语言虽然与传统的面向对象语言 (如 C++，JAVA 和 Python) 不同，但也是一个明显的面向对象语言。
+
+- R 中所有要素都是对象，从数字到字符串到矩阵
+- R 支持封装 (encapsulation)
+- R 类支持多态 (polymorphic)
+- R 允许继承 (inheritance)
+
+下面介绍 R 语言中的 S3 和 S4 类。
+
+## S3 类
+
+R 中原始的类结构，包含一个列表，附加类名属性和调度 (dispatch) 功能
+
+### S3 泛型函数
+
+同一个函数可以针对不同的类调用不同的操作。
+
+### 实例：线性模型函数 `lm()` 中的 OOP
+
+```{r}
+x <- c(1, 2, 3)
+y <- c(1, 3, 8)
+lm_out <- lm(y ~ x)
+class(lm_out)
+```
+
+```{r}
+lm_out
+```
+
+这里使用的是 `print.lm()` 方法。
+
+
+去掉 `lm_out` 的类属性，再打印对象
+
+```{r}
+unclass(lm_out)
+```
+
+### 寻找泛型函数的实现方法
+
+```{r}
+print
+```
+
+`methods()` 函数列出某个函数对应的所有泛型函数。
+
+```{r}
+methods(print)
+```
+
+星号标注的是不可见函数 (nonvisible function)。
+可以使用 `getAnywhere()` 函数找到函数的命名空间。
+
+```{r}
+getAnywhere(print.lm)
+```
+
+调用命名空间 `stats` 中的 `print.lm()` 函数
+
+```{r}
+stats:::print.lm(lm_out)
+```
+
+### 编写 S3 类
+
+S3 类实例通过构建列表的方式来创建：
+
+- 创建列表
+- 设置类属性
+
+```{r}
+j <- list(
+  name="Joe",
+  salary=55000,
+  union=TRUE
+)
+class(j) <- "employee"
+attributes(j)
+```
+
+使用默认的 `print()` 输出
+
+```{r}
+j
+```
+
+为 `employee` 类型定义 `print` 函数
+
+```{r}
+print.employee <- function(wrkr) {
+  cat(wrkr$name, "\n")
+  cat("salary", wrkr$salary, "\n")
+  cat("union member", wrkr$union, "\n")
+}
+```
+
+检查 `employee` 类的方法
+
+```{r}
+methods(, "employee")
+```
+
+实际测试
+
+```{r}
+j
+```
+
+### 使用继承
+
+```{r}
+k <- list(
+  name="Kate",
+  salary=68000,
+  union=FALSE,
+  hrsthismonth=2
+)
+class(k) <- c("hrlyemployee", "employee")
+```
+
+`hrlyemployee` 类继承 `employee` 类的 `print` 方法
+
+```{r}
+k
+```
+
+## S4 类
+
+S4 类与 S3 类对比
+
+| 操作 | S3 类 | S4 类 |
+|------|-------|-------|
+| 定义类 | 在构造函数的代码中隐式定义 | `setClass()` |
+| 创建对象 | 创建列表，设置类属性 | `new()` |
+| 引用成员变量 | `$` | `@` |
+| 实现泛型函数 `f()` | 定义 `f.classname()` | `setMethod()` |
+| 声明泛型函数 | `UseMethod()` | `setCeneric()` |
+
+### 编写 S4 类
+
+定义 `employee` 类
+
+```{r}
+setClass(
+  "employee",
+  representation(
+    name="character",
+    salary="numeric",
+    union="logical"
+  )
+)
+```
+
+创建 `employee` 类对象
+
+```{r}
+joe <- new(
+  "employee",
+  name="Joe",
+  salary=55000,
+  union=TRUE
+)
+joe
+```
+
+成员变量称为 slot，通过 `@` 引用
+
+```{r}
+joe@salary
+```
+
+可以使用 `slot()` 函数通过组件名访问组件
+
+```{r}
+slot(joe, "salary")
+```
+
+可以给组件赋值
+
+```{r}
+joe@salary <- 65000
+joe
+```
+
+```{r}
+slot(joe, "salary") <- 88000
+joe
+```
+
+访问未定义的组件会报错，但在 S3 中不会报错
+
+```{r eval=FALSE}
+joe@salry <- 48000
+```
+
+```
+Error in (function (cl, name, valueClass) : ‘salry’ is not a slot in class “employee”
+```
+
+### 在 S4 类上实现泛型函数
+
+使用 `setMethod()` 定义泛型函数。
+
+S4 类中 `show()` 函数类似 S3 类中的 `print()` 函数
+
+```{r}
+show(joe)
+```
+
+```{r}
+setMethod(
+  "show",
+  "employee",
+  function(object) {
+    inorout <- ifelse(object@union, "is", "is not")
+    cat(object@name, "has a salary of", object@salary,
+        "and", inorout, "in the union", "\n")
+  }
+)
+```
+
+```{r}
+show(joe)
+```
+
+## S3 类和 S4 类对比
+
+注：作为一名初学者，笔者尚不了解 R 语言常用的类型。
+不过，类型安全对于维护大型项目来说至关重要。
+S4 类有明确的类型定义，可以在 IDE 中使用代码提示功能。
+
+## 对象管理
+
+R 语言提供多种工具管理环境中的对象
+
+- `ls()`
+- `rm()`
+- `save()`
+- 查看对象结构，如 `class()` 和 `mode()`
+- `exists()`
+
+### 用 `ls()` 函数列出所有对象
+
+```{r}
+ls()
+```
+
+`pattern` 参数用于筛选
+
+```{r}
+ls(pattern="e")
+```
+
+### 用 `rm()` 函数删除特定对象
+
+```{r}
+rm("j", "joe")
+```
+
+`list` 参数指定删除对象的名称。
+下面代码删除所有对象
+
+```{r}
+rm(list = ls())
+```
+
+### 用 `save()` 函数保存对象集合
+
+`save()` 保存成文件，`load()` 从文件中加载
+
+```{r}
+z <- rnorm(100000)
+hz <- hist(z)
+```
+
+```{r}
+save(hz, file="hzfile")
+ls()
+```
+
+```{r}
+rm(hz)
+ls()
+```
+
+```{r}
+load("hzfile")
+ls()
+```
+
+```{r}
+plot(hz)
+```
+
+### 查看对象内部结构
+
+- `class()`，`mode()`
+- `names()`，`attributes()`
+- `unclass()`，`str()`
+- `edit()`
+
+```{r}
+ct <- read.table(
+  "../data/ct.dat",
+  header=TRUE,
+)
+ct
+```
+生成列联表
+
+```{r}
+cttab <- table(ct)
+cttab
+```
+
+使用 `unclass()` 查看对象结构
+
+```{r}
+ctu <- unclass(cttab)
+ctu
+```
+
+```{r}
+class(ctu)
+```
+
+`str()` 以更紧凑的方式显示
+
+```{r}
+str(cttab)
+```
+
+`page()` 和 `edit()` 可以用于查看对象内容，比如函数的具体实现。
+
+`names()` 函数显示对象有哪些组件
+
+```{r}
+names(hz)
+```
+
+`attributes()` 会给出更多信息，包括类名称
+
+```{r}
+attributes(hz)
+```
+
+### `exists()` 函数
+
+`exists()` 判断对象是否存在
+
+```{r}
+exists("acc")
+```
+
