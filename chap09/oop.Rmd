@@ -140,7 +140,7 @@ S4 类与 S3 类对比
 | 创建对象 | 创建列表，设置类属性 | `new()` |
 | 引用成员变量 | `$` | `@` |
 | 实现泛型函数 `f()` | 定义 `f.classname()` | `setMethod()` |
-| 声明泛型函数 | `UseMethod()` | `setCeneric()` |
+| 声明泛型函数 | `UseMethod()` | `setGeneric()` |
 
 ### 编写 S4 类
 
@@ -212,6 +212,8 @@ S4 类中 `show()` 函数类似 S3 类中的 `print()` 函数
 ```{r}
 show(joe)
 ```
+
+为 `employee` 类定义泛型函数 `show`
 
 ```{r}
 setMethod(
