@@ -134,7 +134,7 @@ x3 <- scan(
 )
 ```
 
-## `readline()`
+### `readline()`
 
 `readline()` 从键盘读取单行数据
 
