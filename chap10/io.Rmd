@@ -1,0 +1,559 @@
+---
+title: "输入与输出"
+output: html_notebook
+---
+
+## 连接键盘与显示器
+
+### `scan()`
+
+`scan()` 函数从文件中读取或者用键盘键入一个向量
+
+四个文件：
+
+z1.txt
+
+```
+123
+4 5
+6
+```
+
+z2.txt
+
+```
+123
+4.2 5
+6
+```
+
+z3.txt
+
+```
+abc
+de f
+g
+```
+
+z4.txt
+
+```
+abc
+123 6
+y
+```
+
+```{r}
+scan("../data/z1.txt")
+```
+
+```{r}
+scan("../data/z2.txt")
+```
+
+读取 z3.txt 会出错，因为 `scan()` 默认使用 double 模式读取。
+
+```{r eval=FALSE}
+scan("../data/z3.txt")
+```
+
+```
+Error in scan("../data/z3.txt") : scan() expected 'a real', got 'abc'
+```
+
+使用 `what` 参数修改读取模式
+
+```{r}
+scan("../data/z3.txt", what="")
+```
+
+```{r}
+scan("../data/z4.txt", what="")
+```
+
+`scan()` 默认情况下以空白字符 (whitespace) 作为分隔。
+可以使用 `sep` 参数手动设置
+
+```{r}
+x1 <- scan(
+  "../data/z3.txt", 
+  what=""
+)
+x1
+```
+
+```{r}
+x2 <- scan(
+  "../data/z3.txt", 
+  what="", 
+  sep="\n"
+)
+x2
+```
+
+```{r}
+print(x1[2])
+print(x2[2])
+```
+
+`scan()` 支持从键盘读数据
+
+```{r, eval=FALSE}
+v <- scan("")
+```
+
+```
+1: 12 5 13
+4: 3 4 5
+7: 8
+8: 
+Read 7 items
+```
+
+```{r, eval=FALSE}
+v
+```
+
+```
+[1] 12  5 13  3  4  5  8
+```
+
+使用 `quiet=TRUE` 关闭读取项目数的报告
+
+```{r}
+x3 <- scan(
+  "../data/z1.txt"
+)
+```
+
+
+```{r}
+x3 <- scan(
+  "../data/z1.txt",
+  quiet=TRUE
+)
+```
+
+## `readline()`
+
+`readline()` 从键盘读取单行数据
+
+```{r, eval=FALSE}
+w <- readline()
+```
+
+```
+abc de f
+```
+
+```{r, eval=FALSE}
+w
+```
+
+```
+[1] "abc de f"
+```
+
+可以增加一个可选的字符串作为提示
+
+```{r, eval=FALSE}
+inits <- readline("type your initials: ")
+```
+
+```
+type your initials: NM
+```
+
+```{r, eval=FALSE}
+inits
+```
+
+```
+[1] "NM
+```
+
+### 输出到显示器
+
+`print()` 函数
+
+```{r}
+x <- 1:3
+print(x^2)
+```
+
+`cat()` 函数
+
+```{r}
+print("abc")
+```
+
+```{r}
+cat("abc")
+```
+
+注意：使用 `cat` 需要手动添加换行符 `"\n"`
+
+`cat()` 各个参数以空格分隔
+
+```{r}
+x
+```
+
+```{r}
+cat(x, "abc", "de\n")
+```
+
+`sep` 参数设置分隔符
+
+```{r}
+cat(x, "abc", "de\n", sep="")
+```
+
+```{r}
+cat(x, "abc", "de\n", sep="\n")
+```
+
+也可以设置为字符串向量
+
+```{r}
+x <- c(5, 12, 13, 8, 88)
+cat(x, sep=c(".", ".", ".", "\n", "\n"))
+```
+
+## 读写文件
+
+### 读取数据框或矩阵
+
+使用 `read.table()` 函数读取数据框
+
+z.txt 文件
+
+```
+name age
+John 25
+Mary 28
+Jim 19
+```
+
+```{r paged.print=FALSE}
+z <- read.table("../data/z.txt", header=TRUE)
+z
+```
+
+读取矩阵
+
+x.txt 文件
+
+```
+1 0 1
+1 1 1
+1 1 0
+1 1 0
+0 0 1
+```
+
+```{r}
+x <- matrix(
+  scan("../data/x.txt"), 
+  nrow=5,
+  byrow=TRUE
+)
+x
+```
+
+另一种方法先读取为数据框，再转为矩阵
+
+```{r}
+read.matrix <- function(filename) {
+  as.matrix(read.table(filename))
+}
+```
+
+```{r}
+read.matrix("../data/x.txt")
+```
+
+### 读取文本文件
+
+`readLines()` 函数读取文本文件
+
+z5.txt
+
+```
+John 25
+Mary 28
+Jim 19
+```
+
+```{r}
+z5 <- readLines("../data/z5.txt")
+z5
+```
+
+### 连接
+
+连接 (connection) 是 R 中用于多种 I/O 操作的基本机制。
+
+可以通过 `file()`，`url()` 等函数创建。
+
+逐行读取前面的 z5.txt 文件
+
+```{r}
+c <- file("../data/z5.txt", "r")
+c
+```
+
+```{r}
+readLines(c, n=1)
+```
+
+```{r}
+readLines(c, n=1)
+```
+
+```{r}
+readLines(c, n=1)
+```
+
+```{r}
+readLines(c, n=1)
+```
+
+遇到文件结束符 (EOF) 时，返回一个空值
+
+```{r}
+c <- file("../data/z5.txt", "r")
+while(TRUE) {
+  rl <- readLines(c, n=1)
+  if (length(rl) == 0) {
+    print("reached the end")
+    break
+  } else print(rl)
+}
+```
+
+`seek()` 重定位读取位置
+
+```{r}
+c <- file("../data/z5.txt", "r")
+readLines(c, n=2)
+```
+
+```{r}
+seek(con=c, where=0)
+```
+
+返回值为定位前的读取位置
+
+
+```{r}
+readLines(c, n=1)
+```
+
+使用 `close()` 关闭连接
+
+```{r}
+close(c)
+```
+
+### 扩展案例：读取PUMS普查数据
+
+```{r}
+extractpums <- function(pf,flds) {
+   dtf <- data.frame()
+   con <- file(pf,"r")
+   repeat {  
+      hrec <- readLines(con,1)
+      if (length(hrec) == 0) break
+      serno <- intextract(hrec,c(2,8))
+      npr <- intextract(hrec,c(106,107))  
+      if (npr > 0)
+         for (i in 1:npr) {  
+            prec <- readLines(con,1)
+            person <- makerow(serno,prec,flds)
+            dtf <- rbind(dtf,person)  
+         }
+   }
+   return(dtf)
+}
+
+```
+
+```{r}
+makerow <- function(srn,pr,fl) {
+   l <- list()
+   l[["serno"]] <- srn
+   for (nm in names(fl)) {
+      l[[nm]] <- intextract(pr,fl[[nm]])
+   }
+   return(l)
+}
+```
+
+```{r}
+intextract <- function(s,rng) {  
+   fld <- substr(s,rng[1],rng[2])
+   return(as.integer(fld))  
+}
+```
+
+
+测试
+
+```{r}
+pumsdf <- extractpums(
+  "../data/pums.short.txt",
+  list(
+    Gender=c(23, 23),
+    Age=c(25, 26)
+  )
+)
+```
+
+```{r paged.print=FALSE}
+head(pumsdf)
+```
+
+### 通过URL访问远程文件
+
+`read.table()` 和 `scan()` 等一些 I/O 函数可以使用 URL 作为参数
+
+```{r}
+uci <- "http://archive.ics.uci.edu/ml/machine-learning-databases/"
+uci <- paste(uci, "echocardiogram/echocardiogram.data", sep="")
+ecc <- read.csv(uci)
+```
+
+```{r paged.print=FALSE}
+head(ecc)
+```
+
+### 写文件
+
+`write.table()` 将数据框写入文件
+
+```{r paged.print=FALSE}
+kids <- c("Jack", "Jill")
+ages <- c(12, 10)
+d <- data.frame(
+  kids, ages, 
+  stringsAsFactors=FALSE
+)
+d
+```
+
+```{r}
+write.table(d, "kds.txt")
+```
+
+kds.txt 文件内容：
+
+```
+"kids" "ages"
+"1" "Jack" 12
+"2" "Jill" 10
+
+```
+
+注意：最后一行为空行
+
+`cat()` 可以用于写入文件。
+
+```{r}
+cat("abc\n", file="u.txt")
+```
+
+`append=TRUE` 支持追加
+
+```{r}
+cat("de\n", file="u.txt", append=TRUE)
+```
+
+u.txt
+
+```
+abc
+de
+
+```
+
+写入多个字段
+
+```{r}
+cat(file="v.txt", 1, 2, "xyz\n")
+```
+
+v.txt
+
+```
+1 2 xyz
+
+```
+
+`writeLines()` 写入文件。
+使用连接，需要手动关闭文件。
+
+```{r}
+c <- file("w.txt", "w")
+writeLines(c("abc", "de", "f"), c)
+close(c)
+```
+
+w.txt
+
+```
+abc
+de
+f
+
+```
+
+### 获取文件和目录信息
+
+```{r paged.print=FALSE}
+file.info("w.txt")
+```
+
+```{r}
+dir(".")
+```
+
+```{r}
+file.exists("wdp.txt")
+```
+
+```{r}
+getwd()
+```
+
+```{r eval=FALSE}
+setwd("../")
+```
+
+### 扩展案例：多个文件内容的和
+
+- filea：5,12,13
+- fileb：3,4,5
+- filec：24,25,7
+
+设置 `dir()` 函数的 `recursive` 参数会列出所有子目录中的文件
+
+```{r}
+sumtree <- function(drtr) {
+  tot <- 0
+  fls <- dir(drtr, recursive=TRUE)
+  for (f in fls) {
+    f <- file.path(drtr, f)
+    if (!file.info(f)$isdir) {
+      tot <- tot + sum(scan(f, quiet=TRUE, sep=","))
+    }
+  }
+  return(tot)
+}
+```
+
+```{r}
+sumtree("./data")
+```
+
+
