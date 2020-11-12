@@ -1,0 +1,265 @@
+---
+title: "字符串操作"
+output: html_notebook
+---
+
+尽管 R 是一门以数值向量和矩阵为核心的统计语言，但字符串同样极为重要。
+
+## 字符串操作函数概述
+
+### `grep()`
+
+`grep(pattern, x)` 在字符串向量 `x` 中搜索给定字符串 `pattern`，返回 `x` 的索引
+
+```{r}
+grep(
+  "Pole",
+  c(
+    "Equator",
+    "North Pole",
+    "South Pole"
+  )
+)
+```
+
+```{r}
+grep(
+  "pole",
+  c(
+    "Equator",
+    "North Pole",
+    "South Pole"
+  )
+)
+```
+
+### `nchar()`
+
+`nchar()` 函数返回字符串 `x` 的长度
+
+```{r}
+nchar("South Pole")
+```
+
+```{r}
+nchar(NA)
+```
+
+```{r}
+nchar(NULL)
+```
+
+### `paste()`
+
+`paste()` 函数将若干个字符串拼接
+
+默认使用空格拼接
+
+```{r}
+paste("North", "Pole")
+```
+
+`sep` 参数指定拼接字符
+
+```{r}
+paste("North", "Pole", sep="")
+```
+
+```{r}
+paste("North", "Pole", sep=".")
+```
+
+```{r}
+paste("North", "and", "South", "Poles")
+```
+
+### `sprintf()`
+
+`sprintf(...)` 按一定格式把若干个组件组合成字符串
+
+```{r}
+i <- 8
+s <- sprintf("the square of %d is %d", i, i^2)
+s
+```
+
+### `substr()`
+
+`substr(x, start, stop)` 函数返回 start:stop 位置的子字符串
+
+```{r}
+substring("Equator", 3, 5)
+```
+
+### `strsplit()`
+
+`strsplit(x, split)` 函数根据 `split` 将字符串 `x` 拆分
+
+```{r}
+strsplit("6-16-2011", split="-")
+```
+
+### `regexpr()`
+
+`regexpr(pattern, text)` 在 `text` 中寻找 `pattern`，返回匹配的第一个子字符串的起始位置。
+
+```{r}
+a <- regexpr("uat", "Equator")
+a
+```
+
+```{r}
+attr(a, "match.length")
+```
+
+
+### `gregexpr()`
+
+`gregexpr(pattern, text)` 与 `regexpr()` 类似，但会返回全部匹配子字符串的起始配置
+
+```{r}
+b <- gregexpr("iss", "Mississippi")
+b
+```
+
+```{r}
+attr(b[[1]], "index.type")
+```
+
+## 正则表达式
+
+支持正则表达式的函数举例：
+
+- `grep()`
+- `grepl()`
+- `regexpr()`
+- `gregexpr()`
+- `sub()`
+- `gsub()`
+- `strsplit()`
+
+```{r}
+grep(
+  "[au]",
+  c(
+    "Equator",
+    "North Pole",
+    "South Pole"
+  )
+)
+```
+
+```{r}
+grep(
+  "o.e",
+  c(
+    "Equator",
+    "North Pole",
+    "South Pole"
+  )
+)
+```
+
+```{r}
+grep(
+  "N..t",
+  c(
+    "Equator",
+    "North Pole",
+    "South Pole"
+  )
+)
+```
+
+```{r}
+grep(
+  ".",
+  c(
+    "abc",
+    "de",
+    "f.g"
+  )
+)
+```
+
+```{r}
+grep(
+  "\\.",
+  c(
+    "abc",
+    "de",
+    "f.g"
+  )
+)
+```
+
+### 扩展案例：检查文件名的后缀
+
+```{r}
+test_suffix <- function(fn, suff) {
+  parts <- strsplit(
+    fn, ".",
+    fixed=TRUE
+  )
+  nparts <- length(parts[[1]])
+  return(parts[[1]][nparts] == suff)
+}
+```
+
+注：`fixed=TRUE` 会将分隔符理解纯字符串，而不是正则表达式。
+当然，也可以使用 `\\.` 表示点号
+
+测试
+
+```{r}
+test_suffix("x.abc", "abc")
+```
+
+```{r}
+test_suffix("x.abc", "ac")
+```
+
+```{r}
+test_suffix("x.y.abc", "ac")
+```
+
+```{r}
+test_suffix("x.y.abc", "abc")
+```
+
+```{r}
+test_suffix_v2 <- function(fn, suff) {
+  ncf <- nchar(fn)
+  dotpos <- ncf - nchar(suff) + 1
+  return(substr(fn, dotpos, ncf) == suff)
+}
+```
+
+```{r}
+test_suffix_v2("x.y.abc", "abc")
+```
+
+```{r}
+test_suffix_v2("x.ac", "abc")
+```
+
+### 扩展案例：生成文件名
+
+```{r}
+for (i in 1:5) {
+  fname <- paste("q", i, ".pdf", sep="")
+  pdf(fname)
+  hist(rnorm(100, sd=i))
+  dev.off()
+}
+```
+
+```{r}
+for (i in 1:5) {
+  fname <- sprintf("q%d.pdf", i)
+  pdf(fname)
+  hist(rnorm(100, sd=i))
+  dev.off()
+}
+```
+
