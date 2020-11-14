@@ -1,0 +1,245 @@
+---
+title: "基础绘图"
+output: html_notebook
+---
+
+介绍 R 基础绘图包的基本功能。
+
+## 创建图形
+
+`plot()` 函数
+
+### 基础图形系统的核心：`plot()` 函数
+
+`plot()` 是泛型函数
+
+```{r}
+plot(c(1, 2, 3), c(1, 2, 4))
+```
+
+`plot()` 函数分阶段执行。`type="n"` 表示不添加任何元素
+
+```{r}
+plot(
+  c(-3, 3),
+  c(-1, 5),
+  type="n",
+  xlab="x",
+  ylab="y"
+)
+```
+
+### 添加线条：`abline()` 函数
+
+`abline()` 使用截距和斜率绘制直线
+
+```{r}
+x <- 1:3
+y <- c(1, 3, 8)
+plot(x, y)
+lmout <- lm(y ~ x)
+abline(lmout)
+```
+
+$$
+y = 2 + 1 \cdot x
+$$
+
+```{r}
+plot(
+  c(-3, 3),
+  c(-1, 5),
+  type="n",
+  xlab="x",
+  ylab="y"
+)
+abline(c(2, 1))
+```
+
+`lines()` 函数
+
+```{r}
+plot(
+  c(1, 3),
+  c(2, 4),
+  type="n",
+  xlab="x",
+  ylab="y"
+)
+lines(c(1.5, 2.5), c(3, 3))
+```
+
+```{r}
+plot(
+  c(1, 2, 3), 
+  c(1, 2, 4),
+  type="l"
+)
+```
+
+### 扩展案例：在一张图中绘制两条密度曲线
+
+`density()` 函数计算密度曲线的估计值
+
+```{r}
+scores <- read.csv("../data/student-mat.csv", header=TRUE)
+scores
+```
+
+```{r}
+d1 <- density(scores$G1, from=0, to=20)
+d2 <- density(scores$G2, from=0, to=20)
+plot(d2, main="", xlab="")
+lines(d1)
+```
+
+### 添加点：`points()` 函数
+
+```{r}
+plot(
+  c(0, 20), c(0, 20), 
+  type="n",
+  xlab="G1",
+  ylab="G3"
+)
+points(scores$G1, scores$G3, pch="+")
+```
+
+### 添加图例：`legend()` 函数
+
+```{r}
+example(legend)
+```
+
+### 添加文字：`text()` 函数
+
+```{r}
+plot(d2, main="", xlab="")
+lines(d1)
+text(6, 0.10, "G1")
+text(7, 0.03, "G2")
+```
+
+## 定制图形
+
+### 改变字符大小：`cex` 选项
+
+```{r}
+plot(d2, main="", xlab="")
+lines(d1)
+text(6, 0.10, "G1", cex=1.5)
+text(7, 0.03, "G2")
+```
+
+### 改变坐标轴的范围：`xlim` 和 `ylim` 选项
+
+```{r}
+d1
+```
+
+```{r}
+d2
+```
+
+```{r}
+plot(
+  c(0, 20),
+  c(0, 0.12),
+  type="n",
+  xlab="score",
+  ylab="density"
+)
+lines(d1)
+lines(d2)
+```
+
+### 添加多边形：`polygon()` 函数
+
+```{r}
+f <- function(x) return (1 - exp(-x))
+curve(f, 0, 2)
+polygon(
+  c(1.2, 1.4, 1.4, 1.2),
+  c(0, 0, f(1.3), f(1.3)),
+  col="gray"
+)
+```
+
+`density` 参数可以配置以条纹形式绘图
+
+```{r}
+f <- function(x) return (1 - exp(-x))
+curve(f, 0, 2)
+polygon(
+  c(1.2, 1.4, 1.4, 1.2),
+  c(0, 0, f(1.3), f(1.3)),
+  col="gray",
+  density=10
+)
+```
+
+### 平滑散点：`lowess()` 和 `loess()` 函数
+
+```{r}
+plot(scores$G1, scores$G2)
+lines(lowess(scores$G1, scores$G2))
+```
+
+### 绘制具显式表达式的函数
+
+$$
+g(t) = \sqrt {t^2 + 1}
+$$
+
+```{r}
+g <- function(t) return ((t^2 + 1)^0.5)
+x <- seq(0, 5, length=10000)
+y <- g(x)
+plot(x, y, type="l")
+```
+
+`curve()` 函数
+
+```{r}
+curve((x^2+1)^0.5, 0, 5)
+```
+
+`plot.function()` 函数
+
+```{r}
+f <- function(x) return ((x^2 + 1)^0.5)
+plot(f, 0, 5)
+```
+
+## 将图形保存到文件
+
+```{r}
+pdf("p1.pdf")
+pdf("p2.pdf")
+
+print("list devs")
+dev.list()
+
+print("set p1.pdf")
+dev.set(2)
+print("close p1.pdf")
+dev.off()
+
+print("set p2.pdf")
+dev.set(3)
+print("close p2.pdf")
+dev.off()
+```
+
+## 创建三维图形
+
+```{r}
+library(lattice)
+a <- 1:10
+b <- 1:15
+eg <- expand.grid(x=a, y=b)
+eg$z <- eg$x^2 + eg$x * eg$y
+wireframe(z ~ x + y, eg)
+```
+
+
