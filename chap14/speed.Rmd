@@ -1,0 +1,455 @@
+---
+title: "性能提升：速度和内存"
+output: html_notebook
+---
+
+时间和空间的权衡
+
+## 编写快速 R 代码
+
+- 向量化，字节码编译，其他方法
+- 核心部分用编译型语言编写，如 C/C++（后续文章介绍）
+- 并行（后续文章介绍）
+
+## 可怕的 `for` 循环
+
+### 用向量化提升速度
+
+#### 示例1
+
+```{r}
+x <- runif(10000000)
+y <- runif(10000000)
+z <- vector(length=10000000)
+```
+
+向量化版本
+
+```{r}
+system.time(z <- x + y)
+```
+
+`for` 循环。
+
+注意：R 中每个操作都是函数
+
+```{r}
+system.time(for (i in 1:length(x)) z[i] <- x[i] + y[i])
+```
+
+#### 示例2
+
+向量过滤？
+
+```{r}
+oddcount <- function(x) return(sum(x%%2 == 1))
+```
+
+```{r}
+x <- sample(1:10000000, 10000000, replace=TRUE)
+```
+
+向量化版本
+
+```{r}
+system.time(oddcount(x))
+```
+
+`for` 版本
+
+```{r}
+system.time(
+  {
+    c <- 0
+    for(i in 1:length(x)) {
+      if (x[1]%%2 == 1) c <- c + 1
+    }
+  }
+)
+```
+
+#### 向量化函数举例
+
+- `ifelse()`
+- `which()`
+- `where()`
+- `any()`
+- `all()`
+- `cumsum()`
+- `cumprod()`
+- `rowSums()`
+- `colSums()`
+- `combn()`
+- `outer()`
+- `lower.tri()`
+- `upper.tri()`
+- `expand.grid()`
+
+### 扩展案例：在蒙特卡罗模拟中获得更快的速度
+
+#### 示例1
+
+`for` 循环
+
+```{r}
+m_version_1 <- function() {
+  sum <- 0
+  nreps <- 100000
+  for (i in 1:nreps) {
+    xy <- rnorm(2)
+    sum <- sum + max(xy)
+  }
+  print(sum/nreps)
+}
+```
+
+```{r}
+system.time(m_version_1())
+```
+
+向量化，空间换时间
+
+```{r}
+m_version_2 <- function() {
+  nreps <- 100000
+  xymat <- matrix(rnorm(2*nreps), ncol=2)
+  maxs <- pmax(xymat[,1], xymat[,2])
+  print(mean(maxs))
+} 
+```
+
+```{r}
+system.time(m_version_2())
+```
+
+#### 示例2
+
+缸1：10 蓝球，8 黄球
+
+缸2：6 篮球，6 黄球
+
+从缸 1 中随机取 1 个球放到缸 2 中，再从缸 2 中取 1 个球，求第二球为蓝色的概率
+
+`for` 循环版本
+
+```{r}
+sim1 <- function(nreps) {
+  nb1 <- 10
+  n1 <- 18
+  n2 <- 13
+  count <- 0
+  for (i in 1:nreps) {
+    nb2 <- 6
+    if (runif(1) < nb1/n1) nb2 <- nb2 + 1
+    if (runif(1) < nb2/n2) count <- count + 1
+  }
+  return(count/nreps)
+}
+```
+
+```{r}
+system.time(print(sim1(100000)))
+```
+
+`apply` 版本
+
+```{r}
+sim2 <- function(nreps) {
+  nb1 <- 10
+  nb2 <- 6
+  n1 <- 18
+  n2 <- 13
+  u <- matrix(c(runif(2*nreps)), nrow=nreps, ncol=2)
+  
+  simfun <- function(rw) {
+    if (rw[1] < nb1/n1) nb2 <- nb2 + 1
+    return (rw[2] < nb2 / n2)
+  }
+  z <- apply(u, 1, simfun)
+  return(mean(z))
+}
+```
+
+
+```{r}
+system.time(print(sim2(100000)))
+```
+
+可以看到，`apply` 版本速度提升不明显
+
+向量化版本
+
+```{r}
+sim3 <- function(nreps) {
+  nb1 <- 10
+  nb2 <- 6
+  n1 <- 18
+  n2 <- 13
+  u <- matrix(c(runif(2*nreps)), nrow=nreps, ncol=2)
+  
+  cndtn <- u[,1] <= nb1/n1 & u[,2] <= (nb2+1)/n2 |
+           u[,1] > nb1/n1 & u[,2] <= nb2/n2
+  return(mean(cndtn))
+}
+```
+
+```{r}
+system.time(print(sim3(100000)))
+```
+
+向量化版本速度有显著的提升
+
+### 扩展案例：生成幂次矩阵
+
+`cbind()` 版本
+
+```{r}
+powers1 <- function(x, dg) {
+  pw <- matrix(x, nrow=length(x))
+  prod <- x
+  for (i in 2:dg) {
+    prod <- prod * x
+    pw <- cbind(pw, prod)
+  }
+  return(pw)
+}
+```
+
+一次分配所有内存
+
+```{r}
+powers2 <- function(x, dg) {
+  pw <- matrix(nrow=length(x), ncol=dg)
+  prod <- x
+  pw[, 1] <- prod
+  for (i in 2:dg) {
+    prod <- prod * x
+    pw[, i] <- prod
+  }
+  return(pw)
+}
+```
+
+对比运行时间
+
+```{r}
+x <- runif(10000000)
+```
+
+```{r}
+system.time(powers1(x, 8))
+```
+
+```{r}
+system.time(powers2(x, 8))
+```
+
+使用 `outer()` 函数
+
+`outer(X, Y, FUN)` 将 `FUN` 函数应用与 X 和 Y 中元素的所有可能配对上
+
+```{r}
+powers3 <- function(x, dg) {
+  return (outer(x, 1:dg, "^"))
+}
+```
+
+
+```{r}
+system.time(powers3(x, 8))
+```
+
+比前两个版本效果更差
+
+使用 `cumprod()` 函数
+
+```{r}
+powers4 <- function(x, dg) {
+  repx <- matrix(rep(x, dg), nrow=length(x))
+  return(t(apply(repx, 1, cumprod)))
+}
+```
+
+```{r}
+system.time(powers4(x, 8))
+```
+
+效果更糟。
+
+注意：性能有时是不可预测的
+
+## 函数式编程和内存问题
+
+绝大部分 R 对象都是不可变的。对变量进行重新赋值需要考虑性能问题。
+
+### 向量赋值问题
+
+```{r}
+rm(z)
+z <- 1:10
+tracemem(z)
+z[3] <- 8
+untracemem(z)
+```
+
+```{r}
+z <- "[<-"(z, 3, value=8)
+```
+
+### 改变时拷贝
+
+```{r}
+z <- runif(10)
+tracemem(z)
+z[3] <- 8
+tracemem(z)
+```
+
+```{r}
+z <- 1:10000000
+```
+
+```{r}
+system.time(z[3] <- 8)
+```
+
+```{r}
+system.time(z[33] <- 88)
+```
+
+### 扩展案例：避免内存拷贝
+
+```{r}
+m <- 50000
+n <- 1000
+```
+
+`for` 循环
+
+```{r}
+z <- list()
+for (i in 1:m) z[[i]] <- sample(1:10, n, replace=TRUE)
+system.time(for (i in 1:m) z[[i]][3] <- 8)
+```
+
+向量化
+
+```{r}
+z <- matrix(sample(1:10, m*n, replace=TRUE), nrow=m)
+system.time(z[,3] <- 8)
+```
+
+效率与 `for` 循环相当？
+
+`lapply()`
+
+```{r}
+set3 <- function(lv) {
+  lv[3] <- 8
+  return(lv)
+}
+z <- list()
+for (i in 1:m) z[[i]] <- sample(1:10, n, replace=TRUE)
+system.time(lapply(z, set3))
+```
+
+效率不如向量化版本
+
+
+## 利用 `Rprof()` 来寻找代码的瓶颈
+
+### 利用 `Rprof()` 来进行监视
+
+`powers1()` 主要瓶颈在 `cbind`
+
+```{r paged.print=FALSE}
+x <- runif(10000000)
+Rprof()
+invisible(powers1(x, 8))
+Rprof(NULL)
+summaryRprof()
+```
+
+`powers2()` 没有明显的瓶颈
+
+```{r paged.print=FALSE}
+Rprof()
+invisible(powers2(x, 8))
+Rprof(NULL)
+summaryRprof()
+```
+
+`powers3()`
+
+```{r paged.print=FALSE}
+Rprof()
+invisible(powers3(x, 8))
+Rprof(NULL)
+summaryRprof()
+```
+
+### `Rprof()` 的工作原理
+
+每隔 0.02 秒检查一次函数调用栈，将结果写入到一个文件中，默认是 `Rprof.out`。
+
+`powers4()` 的输出结果很难解读
+
+```{r paged.print=FALSE}
+Rprof()
+invisible(powers4(x, 8))
+Rprof(NULL)
+summaryRprof()
+```
+
+`Rprof.out` 文件内容类似
+
+```
+sample.interval=20000
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"matrix" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+"aperm.default" "aperm" "apply" "t" "powers4" 
+```
+
+## 字节码编译
+
+```{r}
+x <- runif(10000000)
+y <- runif(10000000)
+z <- vector(length=10000000)
+```
+
+
+```{r}
+g <- function() for(i in 1:length(x)) z[i] <<- x[i] - y[i]
+system.time(g())
+```
+
+```{r}
+library(compiler)
+f <- function() for(i in 1:length(x)) z[i] <<- x[i] + y[i]
+cf <- cmpfun(f)
+system.time(cf())
+```
+
+## 内存无法装下数据怎么办
+
+分块，例如使用 `read.table()` 的 `skip` 参数
+
+使用 R 软件包来进行内存管理，例如 RMySQL，biglm，ff，bigmemory 等包
+
