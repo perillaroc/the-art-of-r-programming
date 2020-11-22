@@ -1,0 +1,200 @@
+---
+title: "R与其他语言的接口"
+output: html_notebook
+---
+
+介绍在 R 语言中调用 C/C++ 和在 Python 中调用 R。
+
+## 编写能被 R 调用的 C/C++ 函数
+
+通过 `.C()` 和 `.Call()` 实现
+
+### R 与 C/C++ 交互的预备知识
+
+C 语言中二维数组按行存储，R 语言中按列存储
+
+C 语言中下标从 0 开始，R 语言中从 1 开始
+
+R 传递给 C 的参数都是以指针形式存在的，C 语言函数的返回值必须是 `void`。
+从 C 函数返回值必须通过函数的参数。
+
+### 示例：提取方阵的次对角线元素
+
+```c
+#include <R.h>
+
+void subdiag(
+  double *m,
+  int *n,
+  int *k,
+  double *result
+){
+  int nval = *n;
+  int kval = *k;
+  int stride = nval + 1;
+  for(int i = 0, j = kval; i < nval - kval; ++i, j+=stride) {
+    result[i] = m[i];
+  }
+}
+```
+
+执行命令
+
+```bash
+R CMD SHLIB sd.c
+```
+
+输出
+
+```
+"C:/rtools40/mingw64/bin/"gcc  -I"C:/lang/R/R-4.0.3/include" -DNDEBUG          -O2 -Wall  -std=gnu99 -mfpmath=sse -msse2 -mstackrealign -c sd.c -o sd.o
+C:/rtools40/mingw64/bin/gcc -shared -s -static-libgcc -o sd.dll tmp.def sd.o -LC:/lang/R/R-4.0.3/bin/x64 -lR
+```
+
+```{r}
+dyn.load("sd.dll")
+m <- rbind(
+  1:5, 
+  6:10, 
+  11:15, 
+  16:20, 
+  21:25
+)
+k <- 2
+.C(
+  "subdiag",
+  as.double(m),
+  as.integer(dim(m)[1]),
+  as.integer(k),
+  result=double(dim(m)[1] - k)
+)
+```
+
+### 扩展案例：预测离散取值的事件序列
+
+```{r}
+y <- sample(0:1, 1000000, replace=T)
+```
+
+
+
+```{r}
+pred_v1 <- function(x, k) {
+  n <- length(x)
+  k2 <- k/2
+  pred <- vector(length=n-k)
+  for (i in 1:(n-k)) {
+    if(sum(x[i:(i+k-1)]) >= k2) {
+      pred[i] <- i
+    } else {
+      pred[i] <- 0
+    }
+  }
+  return (mean(abs(pred-x[(k+1):n])))
+}
+```
+
+```{r}
+system.time(pred_v1(y, 1000))
+```
+
+```{r}
+pred_v2 <- function(x, k) {
+  n <- length(x)
+  k2 <- k/2
+  pred <- vector(length=n-k)
+  sm <- sum(x[1:k])
+  if (sm >= k2) pred[1] <- 1 else pred[1] <- 0
+  if (n - k >= 2) {
+    for (i in 2:(n-k)) {
+      sm <- sm + x[i+k-1] - x[i-1]
+      if (sm >= k2) pred[i] <- 1 else pred[i] <- 0
+    }
+  }
+  return(mean(abs(pred - x[(k+1):n])))
+}
+```
+
+```{r}
+system.time(pred_v2(y, 1000))
+```
+
+使用 `filter()` 函数
+
+```{r}
+pred_v3 <- function(x, k) {
+  n <- length(x)
+  f <- filter(x, rep(1, k), sides=1)[k:(n-1)]
+  k2 <- k/2
+  pred <- as.integer(f >= k2)
+  return(mean(abs(pred - x[(k+1):n])))
+}
+```
+
+计算时间不如上一个版本
+
+```{r}
+system.time(pred_v3(y, 1000))
+```
+
+C 语言版本
+
+```c
+#include <R.h>
+
+void pred_v4(int *x, int *n, int *k, double *errrate) {
+  int nval = *n;
+  int kval = *k;
+  int nk = nval - kval;
+  int sm = 0;
+  int errs = 0;
+  int pred;
+  
+  double k2 = kval / 2.0;
+  
+  for (int i=0; i< kval; i++) {
+    sm += x[i];
+  }
+  
+  if (sm >= k2) {
+    pred = 1;
+  } else {
+    pred = 0;
+  }
+  
+  errs = abs(pred - x[kval]);
+  
+  for (int i=1; i < nk; i++) {
+    sm = sm + x[i+kval-1] - x[i-1];
+    if (sm >= k2) {
+      pred = 1;
+    } else {
+      pred = 0;
+    }
+    errs += abs(pred - x[i+kval]);
+  }
+  *errrate = (double) errs / nk;
+}
+```
+
+```bash
+R CMD SHLIB pred.c
+```
+
+```
+"C:/rtools40/mingw64/bin/"gcc  -I"C:/lang/R/R-4.0.3/include" -DNDEBUG          -O2 -Wall  -std=gnu99 -mfpmath=sse -msse2 -mstackrealign -c pred.c -o pred.o
+C:/rtools40/mingw64/bin/gcc -shared -s -static-libgcc -o pred.dll tmp.def pred.o -LC:/lang/R/R-4.0.3/bin/x64 -lR
+```
+
+```{r}
+dyn.load("pred.dll")
+system.time(
+  .C(
+    "pred_v4",
+    as.integer(y),
+    as.integer(length(y)),
+    as.integer(1000),
+    errrate=double(1)
+  )
+)
+```
