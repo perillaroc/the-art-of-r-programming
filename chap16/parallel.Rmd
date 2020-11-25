@@ -9,7 +9,7 @@ output: html_notebook
 
 mutual outlink
 
-对于 nxn 矩阵
+对于 n x n 矩阵
 
 ```
 sum = 0
@@ -100,7 +100,6 @@ testm <- matrix(
 )
 testm
 ```
-
 
 在创建的集群上针对邻接矩阵运算代码
 
@@ -198,7 +197,7 @@ z$result
 
 网络传输
 
-snow 中传输前将对象转为字符串 (序列化？)
+snow 中传输前将对象转为字符串 (序列化?)
 
 ### 简单并行程序，以及那些不简单的
 
